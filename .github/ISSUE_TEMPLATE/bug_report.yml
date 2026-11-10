@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible LazaScrub problem.
+title: '[Bug]: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Please do not attach a file that holds real personal data. Describe what made the file, or make a small test file with invented details.
+  - type: input
+    id: version
+    attributes:
+      label: LazaScrub version
+      placeholder: '1.0.0'
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: 'Windows 11, version and build number'
+    validations:
+      required: true
+  - type: dropdown
+    id: section
+    attributes:
+      label: Affected section
+      options:
+        - Inspect a file
+        - Clean and verify
+        - Clean a folder
+        - Command-line tool
+        - Source build or release workflow
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: filetype
+    attributes:
+      label: File type and where the file came from
+      placeholder: 'JPEG from a Pixel 9, or PDF exported from Word 365'
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error text or useful screenshots
+      description: Include the exact error message if one appeared.

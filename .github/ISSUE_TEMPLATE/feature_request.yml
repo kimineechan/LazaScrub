@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest an improvement to LazaScrub.
+title: '[Feature]: '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: What are you trying to do?
+      description: Describe the workflow this feature would improve, or the file type you want supported.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Suggested behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or examples

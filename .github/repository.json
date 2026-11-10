@@ -1,0 +1,23 @@
+{
+  "owner": "kimineechan",
+  "name": "LazaScrub",
+  "visibility": "public",
+  "description": "Portable Windows utility that lists the metadata hidden in photos, PDFs and Office documents, removes it, and verifies the cleaned copy.",
+  "topics": [
+    "windows",
+    "golang",
+    "desktop-app",
+    "metadata",
+    "exif",
+    "privacy",
+    "pdf",
+    "forensics",
+    "metadata-removal",
+    "portable-app",
+    "win32",
+    "windows-utility"
+  ],
+  "default_branch": "main",
+  "license": "MIT",
+  "first_release": "v1.0.0"
+}
