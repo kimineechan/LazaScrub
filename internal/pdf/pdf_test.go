@@ -115,6 +115,47 @@ func TestCompressedLayout(t *testing.T) {
 	checkClean(t, original)
 }
 
+// The samples must be read through their own cross-reference data. If the
+// fallback that scans for objects were used instead, a fault in the table
+// reader would go unnoticed.
+func TestTablesAreReadDirectly(t *testing.T) {
+	for name, data := range map[string][]byte{"table": samples.PDF(), "stream": samples.CompressedPDF()} {
+		d, err := load(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if d.rebuilt {
+			t.Errorf("%s: the cross-reference data was not used", name)
+		}
+		if d.pages() != 1 {
+			t.Errorf("%s: pages = %d", name, d.pages())
+		}
+	}
+	d, _ := load(samples.CompressedPDF())
+	for _, num := range []int{1, 2, 3, 5, 10} {
+		if pl := d.table[num]; pl.holder != 11 {
+			t.Errorf("object %d was not located inside the object stream: %+v", num, pl)
+		}
+	}
+}
+
+// An object that the table leaves out is still part of the document.
+func TestIncompleteTableIsRepaired(t *testing.T) {
+	whole := samples.PDF()
+	// Blank the entry for the page object in the first table.
+	entry := []byte("3 1\n")
+	i := bytes.Index(whole, entry)
+	copy(whole[i:], bytes.Repeat([]byte(" "), len(entry)+20))
+	d, err := load(whole)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.rebuilt || d.pages() != 1 {
+		t.Errorf("rebuilt = %v, pages = %d", d.rebuilt, d.pages())
+	}
+	checkClean(t, whole)
+}
+
 // A file whose cross-reference table is unusable is read by scanning for its objects.
 func TestDamagedTableIsRebuilt(t *testing.T) {
 	broken := samples.PDF()

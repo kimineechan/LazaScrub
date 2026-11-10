@@ -51,6 +51,8 @@ type document struct {
 	at        map[int]*object // objects by file offset
 	objects   map[int]*object // objects by number
 	holders   map[int]*holder
+	freed     map[int]bool // objects that a later save deleted
+	rebuilt   bool         // the file's own table was unusable
 	nesting   int
 }
 
@@ -72,6 +74,7 @@ func load(data []byte) (*document, error) {
 	d := &document{
 		data: data, base: base, table: map[int]place{},
 		at: map[int]*object{}, objects: map[int]*object{}, holders: map[int]*holder{}, latest: map[int]*object{},
+		freed: map[int]bool{},
 	}
 	tableErr := d.readTable()
 	d.survey()
@@ -81,6 +84,8 @@ func load(data []byte) (*document, error) {
 	}
 	if tableErr != nil || d.catalog() == nil {
 		d.rebuild()
+	} else {
+		d.repair()
 	}
 	if d.catalog() == nil {
 		return nil, errors.New("the PDF has no document catalog, so it cannot be read")
@@ -135,9 +140,39 @@ func (d *document) readTable() error {
 	for num, pl := range d.table {
 		if pl.free {
 			delete(d.table, num)
+			d.freed[num] = true
 		}
 	}
 	return nil
+}
+
+// repair adds objects that are in the file but missing from its table. A
+// table can be incomplete without being unreadable, and an object the table
+// does not list would otherwise be taken for one the document no longer uses.
+func (d *document) repair() {
+	add := func(num int, pl place) {
+		if _, listed := d.table[num]; !listed && !d.freed[num] {
+			d.table[num] = pl
+			delete(d.objects, num)
+		}
+	}
+	for _, s := range d.spots {
+		add(s.num, place{offset: s.offset})
+	}
+	for _, s := range d.spots {
+		dict, _ := s.obj.value.(*Dict)
+		if !s.obj.isStream || dict.Get("Type") != Name("ObjStm") {
+			continue
+		}
+		if pl := d.table[s.num]; pl.holder != 0 || (pl.offset != s.offset && pl.offset+d.base != s.offset) {
+			continue
+		}
+		if h, err := d.openHolder(s.obj); err == nil {
+			for i, num := range h.nums {
+				add(num, place{offset: -1, holder: s.num, index: i})
+			}
+		}
+	}
 }
 
 func (d *document) set(num int, pl place) {
@@ -222,7 +257,7 @@ func (d *document) crossStream(dict *Dict, raw []byte) error {
 	widths := asInts(dict.Get("W"))
 	size, _ := asInt(dict.Get("Size"))
 	ranges := asInts(dict.Get("Index"))
-	if ranges == nil {
+	if len(ranges) == 0 {
 		ranges = []int{0, size}
 	}
 	if len(widths) != 3 || widths[0] < 0 || widths[1] < 0 || widths[2] < 0 {
@@ -287,14 +322,22 @@ func (d *document) parseAt(offset int) (*object, error) {
 		if at < len(d.data) && d.data[at] == '\r' {
 			at++
 		}
+		lone := at // where the data starts if the line ends in a carriage return alone
 		if at < len(d.data) && d.data[at] == '\n' {
 			at++
 		}
 		end := -1
-		if length, ok := d.length(dict.Get("Length")); ok && length >= 0 && at+length <= len(d.data) {
-			q := &parser{src: d.data, pos: at + length}
-			if q.keyword("endstream") {
-				end, p.pos = at+length, q.pos
+		if length, ok := d.length(dict.Get("Length")); ok && length >= 0 {
+			// The stated length decides between the two possible starts.
+			for _, start := range []int{at, lone} {
+				if start+length > len(d.data) {
+					continue
+				}
+				q := &parser{src: d.data, pos: start + length}
+				if q.keyword("endstream") {
+					at, end, p.pos = start, start+length, q.pos
+					break
+				}
 			}
 		}
 		if end < 0 {
@@ -512,6 +555,8 @@ func headerStart(data []byte, at int) (int, bool) {
 // rebuild recreates the object table from the survey when the file's own
 // cross-reference data is missing or unusable.
 func (d *document) rebuild() {
+	d.rebuilt = true
+	d.freed = map[int]bool{}
 	d.table = map[int]place{}
 	d.objects = map[int]*object{}
 	d.holders = map[int]*holder{}

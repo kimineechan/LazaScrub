@@ -132,6 +132,10 @@ func Clean(data []byte) ([]byte, error) {
 	if !ok {
 		return nil, errors.New("the PDF has no document catalog, so it cannot be cleaned")
 	}
+	pages := d.pages()
+	if pages == 0 {
+		return nil, errors.New("no pages could be found in the PDF, so it was not cleaned")
+	}
 	plans := d.reach(root.Num)
 	for _, pl := range plans {
 		if !pl.obj.isStream || soleFilter(pl.obj.value.(*Dict)) != "DCTDecode" {
@@ -143,9 +147,10 @@ func Clean(data []byte) ([]byte, error) {
 	}
 	out := write(d, plans, root)
 
-	// Read the result back before trusting it.
+	// Read the result back before trusting it: it must open with its own
+	// table, hold the same pages and lead to the same number of objects.
 	check, err := load(out)
-	if err != nil || check.pages() != d.pages() {
+	if err != nil || check.rebuilt || check.pages() != pages || len(check.reach(root.Num)) != len(plans) {
 		return nil, errors.New("the cleaned PDF did not read back correctly, so it was not saved")
 	}
 	return out, nil
