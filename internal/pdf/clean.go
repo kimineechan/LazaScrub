@@ -33,8 +33,8 @@ type plan struct {
 // cleaning removes. Whatever it does not reach is left out of the new file:
 // document information, XMP packets, thumbnails and everything that earlier
 // saves left behind.
-func (d *document) reach(root int) map[int]*plan {
-	plans := map[int]*plan{}
+func (d *document) reach(root int) (plans map[int]*plan, missing []int) {
+	plans = map[int]*plan{}
 	queue := []int{root}
 	var walk func(v Object, top bool, pl *plan)
 	walk = func(v Object, top bool, pl *plan) {
@@ -77,9 +77,10 @@ func (d *document) reach(root int) map[int]*plan {
 	for num, pl := range plans {
 		if pl == nil || num <= 0 {
 			delete(plans, num)
+			missing = append(missing, num)
 		}
 	}
-	return plans
+	return plans, missing
 }
 
 // body returns the object's value with the planned cuts applied.
@@ -136,7 +137,15 @@ func Clean(data []byte) ([]byte, error) {
 	if pages == 0 {
 		return nil, errors.New("no pages could be found in the PDF, so it was not cleaned")
 	}
-	plans := d.reach(root.Num)
+	plans, missing := d.reach(root.Num)
+	for _, num := range missing {
+		// A reference to an object that was deleted is harmless. A reference
+		// to one that is in the file but not in its table means the table
+		// cannot be trusted, and neither could a copy built from it.
+		if d.present[num] && !d.freed[num] {
+			return nil, errors.New("the PDF could not be read reliably, so it was not cleaned")
+		}
+	}
 	for _, pl := range plans {
 		if !pl.obj.isStream || soleFilter(pl.obj.value.(*Dict)) != "DCTDecode" {
 			continue
@@ -150,7 +159,10 @@ func Clean(data []byte) ([]byte, error) {
 	// Read the result back before trusting it: it must open with its own
 	// table, hold the same pages and lead to the same number of objects.
 	check, err := load(out)
-	if err != nil || check.rebuilt || check.pages() != pages || len(check.reach(root.Num)) != len(plans) {
+	if err != nil || check.rebuilt || check.pages() != pages {
+		return nil, errors.New("the cleaned PDF did not read back correctly, so it was not saved")
+	}
+	if copied, lost := check.reach(root.Num); len(copied) != len(plans) || len(lost) != len(missing) {
 		return nil, errors.New("the cleaned PDF did not read back correctly, so it was not saved")
 	}
 	return out, nil
@@ -216,7 +228,7 @@ func Fingerprint(data []byte) ([]byte, error) {
 	if !ok {
 		return nil, errors.New("the PDF has no document catalog")
 	}
-	plans := d.reach(root.Num)
+	plans, _ := d.reach(root.Num)
 	nums := make([]int, 0, len(plans))
 	for num := range plans {
 		nums = append(nums, num)

@@ -139,21 +139,27 @@ func TestTablesAreReadDirectly(t *testing.T) {
 	}
 }
 
-// An object that the table leaves out is still part of the document.
-func TestIncompleteTableIsRepaired(t *testing.T) {
-	whole := samples.PDF()
-	// Blank the entry for the page object in the first table.
-	entry := []byte("3 1\n")
-	i := bytes.Index(whole, entry)
-	copy(whole[i:], bytes.Repeat([]byte(" "), len(entry)+20))
-	d, err := load(whole)
-	if err != nil {
-		t.Fatal(err)
+// blank removes one object's row from the first cross-reference table.
+func blank(whole []byte, num string) []byte {
+	row := []byte("\n" + num + " 1\n")
+	i := bytes.Index(whole, row) + 1
+	copy(whole[i:], bytes.Repeat([]byte(" "), len(row)-1+20))
+	return whole
+}
+
+// When the table leaves out an object that the document needs and that is
+// still in the file, the table cannot be trusted. Cleaning must refuse
+// instead of writing a copy with something missing.
+func TestIncompleteTableIsNotCleaned(t *testing.T) {
+	for _, num := range []string{"3", "5", "9"} {
+		broken := blank(samples.PDF(), num)
+		if _, err := Scan(broken); err != nil {
+			t.Errorf("object %s: the file could not even be scanned: %v", num, err)
+		}
+		if out, err := Clean(broken); err == nil {
+			t.Errorf("object %s: a copy of %d bytes was written from an incomplete table", num, len(out))
+		}
 	}
-	if d.rebuilt || d.pages() != 1 {
-		t.Errorf("rebuilt = %v, pages = %d", d.rebuilt, d.pages())
-	}
-	checkClean(t, whole)
 }
 
 // A file whose cross-reference table is unusable is read by scanning for its objects.

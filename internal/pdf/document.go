@@ -47,7 +47,7 @@ type document struct {
 	revisions int
 	linear    bool
 	spots     []spot
-	latest    map[int]*object // the last copy of each object in file order
+	present   map[int]bool    // every object number found anywhere in the file
 	at        map[int]*object // objects by file offset
 	objects   map[int]*object // objects by number
 	holders   map[int]*holder
@@ -73,7 +73,7 @@ func load(data []byte) (*document, error) {
 	}
 	d := &document{
 		data: data, base: base, table: map[int]place{},
-		at: map[int]*object{}, objects: map[int]*object{}, holders: map[int]*holder{}, latest: map[int]*object{},
+		at: map[int]*object{}, objects: map[int]*object{}, holders: map[int]*holder{}, present: map[int]bool{},
 		freed: map[int]bool{},
 	}
 	tableErr := d.readTable()
@@ -82,10 +82,8 @@ func load(data []byte) (*document, error) {
 		first, _ := d.spots[0].obj.value.(*Dict)
 		d.linear = first.has("Linearized")
 	}
-	if tableErr != nil || d.catalog() == nil {
+	if tableErr != nil || !d.sound() || d.catalog() == nil {
 		d.rebuild()
-	} else {
-		d.repair()
 	}
 	if d.catalog() == nil {
 		return nil, errors.New("the PDF has no document catalog, so it cannot be read")
@@ -146,33 +144,22 @@ func (d *document) readTable() error {
 	return nil
 }
 
-// repair adds objects that are in the file but missing from its table. A
-// table can be incomplete without being unreadable, and an object the table
-// does not list would otherwise be taken for one the document no longer uses.
-func (d *document) repair() {
-	add := func(num int, pl place) {
-		if _, listed := d.table[num]; !listed && !d.freed[num] {
-			d.table[num] = pl
-			delete(d.objects, num)
-		}
-	}
-	for _, s := range d.spots {
-		add(s.num, place{offset: s.offset})
-	}
-	for _, s := range d.spots {
-		dict, _ := s.obj.value.(*Dict)
-		if !s.obj.isStream || dict.Get("Type") != Name("ObjStm") {
+// sound reports whether every entry of the table points at the object it
+// names. A table that does not is treated as unusable.
+func (d *document) sound() bool {
+	for num, pl := range d.table {
+		if pl.holder != 0 {
 			continue
 		}
-		if pl := d.table[s.num]; pl.holder != 0 || (pl.offset != s.offset && pl.offset+d.base != s.offset) {
-			continue
+		o, err := d.parseAt(pl.offset)
+		if (err != nil || o.num != num) && d.base > 0 {
+			o, err = d.parseAt(pl.offset + d.base)
 		}
-		if h, err := d.openHolder(s.obj); err == nil {
-			for i, num := range h.nums {
-				add(num, place{offset: -1, holder: s.num, index: i})
-			}
+		if err != nil || o.num != num {
+			return false
 		}
 	}
+	return true
 }
 
 func (d *document) set(num int, pl place) {
@@ -406,10 +393,6 @@ func (d *document) get(num int) (*object, error) {
 		if err == nil && o.num != num {
 			err = errMissing
 		}
-		// The table points at the wrong place, so use the copy the survey found.
-		if alt := d.latest[num]; err != nil && alt != nil {
-			o, err = alt, nil
-		}
 	}
 	if err != nil {
 		d.objects[num] = nil
@@ -516,7 +499,14 @@ func (d *document) survey() {
 			continue
 		}
 		d.spots = append(d.spots, spot{o.num, start, o})
-		d.latest[o.num] = o
+		d.present[o.num] = true
+		if dict, _ := o.value.(*Dict); o.isStream && dict.Get("Type") == Name("ObjStm") {
+			if h, err := d.openHolder(o); err == nil {
+				for _, num := range h.nums {
+					d.present[num] = true
+				}
+			}
+		}
 		if o.next > pos {
 			pos = o.next
 		}
