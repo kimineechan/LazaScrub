@@ -1,0 +1,13 @@
+/dist/
+/release/
+*.test.exe
+*.exe
+*.zip
+*.test
+*.out
+coverage.*
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
