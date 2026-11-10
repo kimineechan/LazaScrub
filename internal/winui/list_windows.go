@@ -9,7 +9,6 @@ import (
 // List view messages, styles and notification stages.
 const (
 	lvmDeleteAll   = 0x1009
-	lvmNextItem    = 0x100C
 	lvmSetStyle    = 0x1036
 	lvmInsertItem  = 0x104D
 	lvmInsertCol   = 0x1061
@@ -130,12 +129,6 @@ func (l *List) Fill(rows [][]string, tints []uint32) {
 func (l *List) Set(row, column int, text string) {
 	item := listItem{SubItem: int32(column), Text: clip(text)}
 	sendMessage.Call(l.Handle, lvmSetItemText, uintptr(row), uintptr(unsafe.Pointer(&item)))
-}
-
-// Selected returns the selected row, or -1.
-func (l *List) Selected() int {
-	r, _, _ := sendMessage.Call(l.Handle, lvmNextItem, ^uintptr(0), 2)
-	return int(int32(r))
 }
 
 // notify handles the messages the list sends to its parent window.

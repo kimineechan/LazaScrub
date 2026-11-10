@@ -235,9 +235,6 @@ func (w *Window) control(class, text string, style, extended uintptr, x, y, widt
 	return h
 }
 
-// Common makes the controls created next visible on every page.
-func (w *Window) Common() { w.page = -1 }
-
 // Page makes the controls created next belong to one page.
 func (w *Window) Page(page int) { w.page = page }
 
@@ -269,13 +266,6 @@ func (w *Window) ShowPage(page int) {
 
 func (w *Window) Label(text string, x, y, width, height int) uintptr {
 	return w.control("STATIC", text, 0x80, 0, x, y, width, height, nil)
-}
-
-// Hint is a label in a quieter colour, for secondary text.
-func (w *Window) Hint(text string, x, y, width, height int) uintptr {
-	h := w.Label(text, x, y, width, height)
-	w.muted[h] = true
-	return h
 }
 
 // Line is a one-line label. A path that is too long for it is shortened in
@@ -375,10 +365,6 @@ func (w *Window) dropped(drop uintptr) {
 
 func (w *Window) Alert(title, text string) {
 	user32.NewProc("MessageBoxW").Call(w.Handle, uintptr(unsafe.Pointer(ptr(text))), uintptr(unsafe.Pointer(ptr(title))), 0x10)
-}
-
-func (w *Window) Info(title, text string) {
-	user32.NewProc("MessageBoxW").Call(w.Handle, uintptr(unsafe.Pointer(ptr(text))), uintptr(unsafe.Pointer(ptr(title))), 0x40)
 }
 
 // Post runs a function on the window's thread. Background work uses it to update the interface.

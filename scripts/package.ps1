@@ -5,9 +5,10 @@ param(
 
 # Packages the built programs and the documentation as a GitHub release asset.
 $ErrorActionPreference = 'Stop'
-Set-Location (Join-Path $PSScriptRoot '..')
+$repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+Set-Location $repo
 
-$version = (Get-Content 'VERSION' -Raw).Trim()
+$version = (Get-Content (Join-Path $repo 'VERSION') -Raw).Trim()
 if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)?$') {
     throw 'VERSION must contain a semantic version such as 1.0.0.'
 }
@@ -15,63 +16,76 @@ if ($Tag -and $Tag -ne "v$version") {
     throw "The release tag must match VERSION (expected v$version)."
 }
 
+# Each entry is the path inside the ZIP, which is also the path in the repository
+# unless a second value names a different source.
 $files = @(
-    @{ Name = 'LazaScrub.exe';                Source = 'dist/LazaScrub.exe' },
-    @{ Name = 'lazascrub-cli.exe';            Source = 'dist/lazascrub-cli.exe' },
-    @{ Name = 'README.md';                    Source = 'README.md' },
-    @{ Name = 'LICENSE';                      Source = 'LICENSE' },
-    @{ Name = 'THIRD-PARTY-NOTICES.txt';      Source = 'THIRD-PARTY-NOTICES.txt' },
-    @{ Name = 'VERSION';                      Source = 'VERSION' },
-    @{ Name = 'CHANGELOG.md';                 Source = 'CHANGELOG.md' },
-    @{ Name = 'VALIDATION.md';                Source = 'VALIDATION.md' },
-    @{ Name = 'docs/USAGE.md';                Source = 'docs/USAGE.md' },
-    @{ Name = 'docs/FORMATS.md';              Source = 'docs/FORMATS.md' },
-    @{ Name = "docs/releases/v$version.md";   Source = "docs/releases/v$version.md" },
-    @{ Name = 'docs/screenshots/inspect.png'; Source = 'docs/screenshots/inspect.png' },
-    @{ Name = 'docs/screenshots/clean.png';   Source = 'docs/screenshots/clean.png' },
-    @{ Name = 'assets/logo.svg';              Source = 'assets/logo.svg' }
+    @('LazaScrub.exe', 'dist/LazaScrub.exe'),
+    @('lazascrub-cli.exe', 'dist/lazascrub-cli.exe'),
+    @('README.md'),
+    @('LICENSE'),
+    @('THIRD-PARTY-NOTICES.txt'),
+    @('VERSION'),
+    @('CHANGELOG.md'),
+    @('VALIDATION.md'),
+    @('docs/USAGE.md'),
+    @('docs/FORMATS.md'),
+    @("docs/releases/v$version.md"),
+    @('docs/screenshots/inspect.png'),
+    @('docs/screenshots/clean.png'),
+    @('assets/logo.svg')
 )
 foreach ($file in $files) {
-    if (-not (Test-Path $file.Source -PathType Leaf)) { throw "Missing release input: $($file.Source)" }
-}
-foreach ($program in 'dist/LazaScrub.exe', 'dist/lazascrub-cli.exe') {
-    if ((Get-Item $program).Length -eq 0) { throw "$program is empty. Build the app first." }
+    $source = Join-Path $repo $file[-1]
+    if (-not (Test-Path $source -PathType Leaf)) { throw "Missing release input: $($file[-1])" }
+    if ((Get-Item $source).Length -eq 0) { throw "$($file[-1]) is empty. Build the app first." }
 }
 
 function Get-Sha256([string]$Path) {
-    return (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
+$dist = Join-Path $repo 'dist'
 $programs = @(
-    "$(Get-Sha256 'dist/LazaScrub.exe')  LazaScrub.exe",
-    "$(Get-Sha256 'dist/lazascrub-cli.exe')  lazascrub-cli.exe"
+    "$(Get-Sha256 (Join-Path $dist 'LazaScrub.exe'))  LazaScrub.exe",
+    "$(Get-Sha256 (Join-Path $dist 'lazascrub-cli.exe'))  lazascrub-cli.exe"
 )
 
-$stage = Join-Path 'dist' 'package'
-if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-$root = Join-Path $stage 'LazaScrub'
-foreach ($file in $files) {
-    $target = Join-Path $root $file.Name
-    New-Item -ItemType Directory -Force (Split-Path $target -Parent) | Out-Null
-    Copy-Item $file.Source $target
-}
-[IO.File]::WriteAllText((Join-Path $root 'SHA256SUMS.txt'), (($programs -join "`n") + "`n"), [Text.Encoding]::ASCII)
-
-$zip = Join-Path 'dist' "LazaScrub-v$version-windows-x64.zip"
+# The entries are written one by one so that their names always use forward
+# slashes, whichever version of PowerShell runs this script.
+$name = "LazaScrub-v$version-windows-x64.zip"
+$zip = Join-Path $dist $name
 if (Test-Path $zip) { Remove-Item $zip -Force }
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-[IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path $stage).Path, (Join-Path (Resolve-Path 'dist').Path "LazaScrub-v$version-windows-x64.zip"), [IO.Compression.CompressionLevel]::Optimal, $false)
-Remove-Item $stage -Recurse -Force
+$stream = [IO.File]::Open($zip, [IO.FileMode]::CreateNew)
+try {
+    $archive = New-Object IO.Compression.ZipArchive($stream, [IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($file in $files) {
+            [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, (Join-Path $repo $file[-1]), "LazaScrub/$($file[0])", [IO.Compression.CompressionLevel]::Optimal) | Out-Null
+        }
+        $writer = New-Object IO.StreamWriter($archive.CreateEntry('LazaScrub/SHA256SUMS.txt').Open(), [Text.Encoding]::ASCII)
+        $writer.Write(($programs -join "`n") + "`n")
+        $writer.Dispose()
+    } finally {
+        $archive.Dispose()
+    }
+} finally {
+    $stream.Dispose()
+}
 
 # Open the archive again to make sure it is complete.
-$archive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $zip).Path)
+$archive = [IO.Compression.ZipFile]::OpenRead($zip)
 try {
-    if ($archive.Entries.Count -ne $files.Count + 1) { throw 'The release ZIP is incomplete.' }
+    $names = @($archive.Entries | ForEach-Object { $_.FullName })
 } finally {
     $archive.Dispose()
 }
+foreach ($file in $files + , @('SHA256SUMS.txt')) {
+    if ($names -notcontains "LazaScrub/$($file[0])") { throw "The release ZIP lacks $($file[0])." }
+}
 
-$checksums = @("$(Get-Sha256 $zip)  LazaScrub-v$version-windows-x64.zip") + $programs
-[IO.File]::WriteAllText((Join-Path (Resolve-Path 'dist').Path 'SHA256SUMS.txt'), (($checksums -join "`n") + "`n"), [Text.Encoding]::ASCII)
+$checksums = @("$(Get-Sha256 $zip)  $name") + $programs
+[IO.File]::WriteAllText((Join-Path $dist 'SHA256SUMS.txt'), (($checksums -join "`n") + "`n"), [Text.Encoding]::ASCII)
 Write-Host "Created $zip"
 $checksums | ForEach-Object { Write-Host $_ }
