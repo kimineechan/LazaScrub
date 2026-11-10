@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 // Item is one file handled while working through a folder.
@@ -40,7 +41,7 @@ func list(folder string, deep bool) ([]string, error) {
 		}
 		return nil
 	})
-	sort.Strings(names)
+	sort.Slice(names, func(i, j int) bool { return strings.ToLower(names[i]) < strings.ToLower(names[j]) })
 	return names, err
 }
 
