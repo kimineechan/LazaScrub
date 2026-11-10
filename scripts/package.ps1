@@ -32,6 +32,7 @@ $files = @(
     @("docs/releases/v$version.md"),
     @('docs/screenshots/inspect.png'),
     @('docs/screenshots/clean.png'),
+    @('docs/screenshots/folder.png'),
     @('assets/logo.svg')
 )
 foreach ($file in $files) {

@@ -58,6 +58,8 @@ The original file is never changed. LazaScrub refuses to save the copy over it.
 3. Tick **Include subfolders** to go through the folders inside it as well.
 4. Select **Clean all files**.
 
+![The folder section after cleaning seven files](screenshots/folder.png)
+
 The cleaned copies go into a new folder beside the original, with `-clean` added to its name. An existing folder is never reused: if `Photos-clean` exists, the next run writes `Photos-clean-2`. Subfolders keep their layout.
 
 Files of other types are not copied, so the clean folder holds only files that were cleaned. A file that could not be cleaned is left out, and the **Result** column says why.
