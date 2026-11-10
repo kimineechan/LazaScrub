@@ -73,11 +73,19 @@ var handlers = []handler{
 // ErrUnsupported is returned for a file whose format has no handler.
 var ErrUnsupported = errors.New("this file type is not supported. LazaScrub reads JPEG, PNG, GIF, WebP, PDF, Word, Excel and PowerPoint files")
 
+// The signature of the container that the older Office formats use, and
+// that Office wraps around a password-protected document.
+var compoundFile = []byte{0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1}
+
 func detect(data []byte) (handler, error) {
 	for _, h := range handlers {
 		if h.is(data) {
 			return h, nil
 		}
+	}
+	if bytes.HasPrefix(data, compoundFile) {
+		return handler{}, errors.New("this is an older or password-protected Office file, which LazaScrub does not read. " +
+			"Save it as .docx, .xlsx or .pptx without a password first")
 	}
 	return handler{}, ErrUnsupported
 }
