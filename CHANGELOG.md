@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0 - 2026-11-15
+
+A new window, in the style of LazaReplay. What LazaScrub finds and removes is unchanged.
+
+- The window is black and see-through, with what is behind it blurred, and has rounded buttons, a switch for **Include subfolders** and its own tables.
+- The tables scroll with the mouse wheel, the bar at their right and the arrow keys, Page Up, Page Down, Home and End.
+- Keyboard use throughout: Tab and Shift + Tab move between controls with a white ring to show where you are, Enter or Space presses, and Ctrl + Tab changes section.
+- The button for the thing to do next is the light one.
+- The dialog for saving a cleaned copy opens in the folder of the original.
+- The window is drawn by LazaScrub itself, only where something changed. No web view, no third-party modules, CGO still off.
+
 ## 1.0.0 - 2026-11-10
 
 First public release.

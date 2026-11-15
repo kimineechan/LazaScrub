@@ -49,7 +49,9 @@ After the fix all 45 PDFs rendered identically, and all 77 real PDFs were read t
 
 ### Interface
 
-The three sections of the app were exercised on Windows 10 at 100% display scaling, with sample files: inspecting, cleaning through the Save dialog, verifying, and cleaning a folder. The screenshots in `docs/screenshots` come from those runs.
+The three sections of the app were exercised on Windows 10 at 100% display scaling, with sample files: inspecting, cleaning through the Save dialog, verifying, and cleaning a folder. The screenshots in `docs/screenshots` come from those runs. This was repeated for the new window of version 1.1.0, which was also drawn at 150%.
+
+The window of 1.1.0 is drawn by LazaScrub itself. Its drawing code, its colours and the way its controls answer the keyboard and the pointer are covered by tests in `internal/winui`: among them, that every colour of text, the risk colours of the tables included, stays readable over a white screen and a black one.
 
 ## GitHub checks
 
@@ -60,6 +62,8 @@ The included workflow runs the tests on Linux with the race detector, builds bot
 - Cleaned Office files were opened with LibreOffice only. Microsoft Office was not available on the test machine.
 - No workbook written by Microsoft Excel was available. Excel handling was checked with generated workbooks and with workbooks written by LibreOffice.
 - The refusal of password-protected PDFs was checked with a generated file only.
-- The interface was not run on Windows 11 or at display scaling other than 100%. It uses the same layout approach as LazaBinder, which scales its fixed layout to the display.
+- The interface was not run on Windows 11, where it asks Windows for rounded corners. On Windows 10 its corners are square.
+- The window draws its own controls, so a screen reader cannot read them. The command-line tool does everything the window does.
+- The dialogs for choosing and saving files, and the boxes that report an error, are the standard ones of Windows and are not dark.
 - The render comparison covers the first page of each document.
 - Real files vary without limit. A file from an app that was not represented here may hold metadata in a place LazaScrub does not look. The verification screen shows what is left in a cleaned copy for that reason.

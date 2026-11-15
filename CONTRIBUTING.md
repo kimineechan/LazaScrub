@@ -33,7 +33,8 @@ Format Go changes with `gofmt`. On Windows, run `build.cmd` before submitting a 
 | `internal/scrub` | Chooses the handler, cleans to a new file and verifies the result |
 | `internal/report` | Text and JSON reports |
 | `internal/samples` | Builds sample files with invented metadata for the tests |
-| `internal/winui`, `cmd/lazascrub` | The native Windows interface |
+| `internal/winui` | The window: the drawing code and the controls, shared in form with LazaReplay |
+| `cmd/lazascrub` | The app |
 | `cmd/lazascrub-cli`, `cmd/verify` | The command-line tool and the release check |
 | `tools/mkres` | Draws the icon and builds the Windows resource object |
 

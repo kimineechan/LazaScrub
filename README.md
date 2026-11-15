@@ -13,7 +13,7 @@
 
 [Download the latest Windows release](https://github.com/kimineechan/LazaScrub/releases/latest) · [Usage guide](docs/USAGE.md) · [What it finds](docs/FORMATS.md) · [Report a bug](https://github.com/kimineechan/LazaScrub/issues/new/choose)
 
-<p align="center"><img src="docs/screenshots/inspect.png" width="760" alt="LazaScrub listing the GPS position, camera serial number and author found in a photo"></p>
+<p align="center"><img src="docs/screenshots/inspect.png" width="1040" alt="LazaScrub listing the GPS position, camera serial number and author found in a photo"></p>
 
 ## Features
 
@@ -25,6 +25,7 @@
 | Clean a folder | Clean every supported file in a folder into a new folder beside it |
 | Save a report | Keep the findings, or the before-and-after result, as text or JSON with SHA-256 hashes |
 | Command line | Run the same engine from scripts with `lazascrub-cli.exe` |
+| Dark, see-through window | Black, with rounded controls and a blurred view of what is behind it. LazaScrub draws it itself, with no web view or interface toolkit |
 | Portable and local | Native Windows interface, no installer, network client, or telemetry |
 
 ## What it finds
@@ -41,7 +42,7 @@ The full list for each file type is in [What LazaScrub finds and removes](docs/F
 ## Download and run
 
 1. Open [Releases](https://github.com/kimineechan/LazaScrub/releases).
-2. Download `LazaScrub-v1.0.0-windows-x64.zip`.
+2. Download `LazaScrub-v1.1.0-windows-x64.zip`.
 3. Extract the ZIP and open `LazaScrub.exe`.
 
 LazaScrub targets **64-bit Windows 10 and Windows 11**. It needs no Go, Python, Node, or separate application framework.
@@ -49,7 +50,7 @@ LazaScrub targets **64-bit Windows 10 and Windows 11**. It needs no Go, Python, 
 Release assets include `SHA256SUMS.txt`. Check the ZIP in PowerShell with:
 
 ```powershell
-Get-FileHash .\LazaScrub-v1.0.0-windows-x64.zip -Algorithm SHA256
+Get-FileHash .\LazaScrub-v1.1.0-windows-x64.zip -Algorithm SHA256
 ```
 
 Compare the result with its entry in `SHA256SUMS.txt`.
@@ -61,7 +62,7 @@ Compare the result with its entry in `SHA256SUMS.txt`.
 3. Select **Clean a copy** and choose where to save it.
 4. **02 Clean and verify** shows what was removed, what was kept on purpose, and whether the content of the copy matches the original.
 
-<p align="center"><img src="docs/screenshots/clean.png" width="760" alt="LazaScrub after cleaning a PDF: 59 of 59 fields removed and the content confirmed unchanged"></p>
+<p align="center"><img src="docs/screenshots/clean.png" width="1040" alt="LazaScrub after cleaning a PDF: 59 of 59 fields removed and the content confirmed unchanged"></p>
 
 To clean many files at once, open **03 Clean a folder**, choose the folder and select **Clean all files**. The copies go into a new folder next to it, named after the original with `-clean` added.
 

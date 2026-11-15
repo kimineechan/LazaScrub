@@ -8,6 +8,8 @@ A portable Windows application that **lists the metadata in a file, writes a cle
 2. Open `LazaScrub.exe`.
 3. Choose one of the three sections, or drop a file or a folder anywhere on the window.
 
+The window has no title bar from Windows. Drag it by its top part, around the name, and use the two buttons at its top right corner to minimise or close it. With the keyboard, **Tab** moves from control to control, **Enter** or **Space** presses, the arrow keys move through a table, and **Ctrl + Tab** changes section.
+
 The app targets **64-bit Windows 10 and Windows 11**. You do not need Go, Node, Python or an installer. Nothing is uploaded: the app has no network client.
 
 You can also drag a file onto `LazaScrub.exe` in Explorer, or pass a path on the command line, to open it straight away.
